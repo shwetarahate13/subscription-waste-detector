@@ -5,35 +5,34 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 
-# Page config
 st.set_page_config(page_title="Subscription Waste Detector", page_icon="💳", layout="wide")
 
-# Title
+
 st.markdown("<h1 style='text-align: center;'>💳 Subscription Waste Detector</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center;'>AI-powered decision for your subscriptions</h4>", unsafe_allow_html=True)
 
-# Load dataset
+
 df = pd.read_csv("subscription_waste_dataset.csv")
 df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
-# Encoding
+
 le_type = LabelEncoder()
 df['subscription_type'] = le_type.fit_transform(df['subscription_type'])
 
 le_label = LabelEncoder()
 df['label'] = le_label.fit_transform(df['label'])
 
-# Train model
+
 X = df.drop('label', axis=1)
 y = df['label']
 
 model = RandomForestClassifier()
 model.fit(X, y)
 
-# Layout
+
 col1, col2 = st.columns([1,1])
 
-# ---------------- INPUT SECTION ----------------
+
 with col1:
     st.subheader("📥 Enter Subscription Details")
 
@@ -73,7 +72,6 @@ with col1:
         else:
             st.error("❌ CANCEL this subscription")
 
-# ---------------- EDA SECTION ----------------
 with col2:
     st.subheader("📊 Insights & Analysis")
 
@@ -92,7 +90,7 @@ with col2:
     ax3.set_title("Correlation Heatmap")
     st.pyplot(fig3)
 
-# Footer
+
 st.markdown("---")
 st.markdown("<p style='text-align: center;'>Built with ❤️ using Streamlit</p>", unsafe_allow_html=True)
 
