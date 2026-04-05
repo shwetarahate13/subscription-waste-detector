@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
-# ================== LOAD DATA ==================
+# LOAD DATA 
 df = pd.read_csv("subscription_waste_dataset.csv")
 df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
@@ -26,8 +26,7 @@ X_scaled = scaler.fit_transform(X)
 # Train model
 model = DecisionTreeClassifier(max_depth=8, min_samples_split=5)
 model.fit(X_scaled, y)
-
-# ================== PREDICTION FUNCTION ==================
+# PREDICTION FUNCTION 
 def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type):
     sub_type_encoded = le_type.transform([sub_type])[0]
     input_data = np.array([[cost, usage, session, last_use, auto, rating, sub_type_encoded]])
@@ -35,7 +34,7 @@ def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
     prediction = model.predict(input_scaled)
     return le_label.inverse_transform(prediction)[0]
 
-# ================== STREAMLIT UI ==================
+#  STREAMLIT UI 
 st.set_page_config(
     page_title="Subscription Waste Detector",
     page_icon="💳",
