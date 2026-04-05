@@ -4,8 +4,9 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 import pickle
 
-# Load dataset (IMPORTANT: no /content path)
+# Load dataset 
 df = pd.read_csv("subscription_waste_dataset.csv")
+
 
 # Remove unwanted columns
 df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
