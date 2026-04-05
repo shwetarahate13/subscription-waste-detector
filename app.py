@@ -195,24 +195,21 @@ def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
 
     except Exception as e:
         return str(e)
+# 10. STREAMLIT
+import streamlit as st
 
-# ================== 10. GUI ==================
-import gradio as gr
+st.title("💳 Subscription Waste Detector")
 
-interface = gr.Interface(
-    fn=predict_subscription,
-    inputs=[
-        gr.Number(label="Monthly Cost"),
-        gr.Number(label="Usage per Month"),
-        gr.Number(label="Avg Session Time"),
-        gr.Number(label="Days Since Last Use"),
-        gr.Radio([0,1], label="Auto Renew (0=No, 1=Yes)"),
-        gr.Slider(1,5,label="Value Rating"),
-        gr.Dropdown(["OTT","Gym","Software","Music","News"], label="Subscription Type")
-    ],
-    outputs=gr.Textbox(label="Prediction"),
-    title="💳 Subscription Waste Detector",
-    description="Predict whether to Keep, Review, or Cancel a subscription"
-)
+cost = st.number_input("Monthly Cost")
+usage = st.number_input("Usage per Month")
+session = st.number_input("Avg Session Time")
+last_use = st.number_input("Days Since Last Use")
+auto = st.radio("Auto Renew", [0,1])
+rating = st.slider("Value Rating", 1, 5)
+sub_type = st.selectbox("Subscription Type", ["OTT","Gym","Software","Music","News"])
+
+if st.button("Predict"):
+    result = predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
+    st.success(f"Prediction: {result}")
 
 interface.launch()
