@@ -1,4 +1,4 @@
-# ================== IMPORTS ==================
+# IMPORTS 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 
-# ================== 1. LOAD DATA ==================
+# 1. LOAD DATA 
 df = pd.read_csv("/content/drive/MyDrive/subscription_waste_dataset.csv")
 
 print("\n===== DATA HEAD =====")
@@ -46,7 +46,7 @@ plt.show()
 
 
 
-# ================== 3. PREPROCESSING ==================
+# 3. PREPROCESSING
 le_type = LabelEncoder()
 df['subscription_type'] = le_type.fit_transform(df['subscription_type'])
 
@@ -68,7 +68,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X_scaled, y, test_size=0.25, random_state=42,stratify=y
 )
 
-# ================== 4. TRAIN MULTIPLE MODELS ==================
+# 4. TRAIN MULTIPLE MODELS 
 models = {
     "Logistic Regression": LogisticRegression(max_iter=2000),
 
@@ -106,7 +106,7 @@ for name, model in models.items():
     print("Accuracy:", acc)
     print(classification_report(y_test, y_pred))
 
-# ================== 5. MODEL COMPARISON TABLE ==================
+#  5. MODEL COMPARISON TABLE 
 comparison_df = pd.DataFrame({
     "Model": results.keys(),
     "Accuracy": results.values()
@@ -121,7 +121,7 @@ plt.title("Model Accuracy Comparison")
 plt.xticks(rotation=30)
 plt.show()
 
-# ================== 6. CONFUSION MATRIX ==================
+#  6. CONFUSION MATRIX
 best_model_name = max(results, key=results.get)
 best_model = models[best_model_name]
 
@@ -136,7 +136,7 @@ plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.show()
 
-# ================== 7. ROC CURVE ==================
+#  7. ROC CURVE 
 # Convert labels to binary format
 y_test_bin = label_binarize(y_test, classes=[0,1,2])
 
@@ -163,12 +163,12 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 plt.show()
 
-# ================== 8. BEST MODEL SELECTION ==================
+#  8. BEST MODEL SELECTION 
 print("\n===== BEST MODEL =====")
 print("Best Model:", best_model_name)
 print("Accuracy:", results[best_model_name])
 
-# ================== FEATURE IMPORTANCE ==================
+#  FEATURE IMPORTANCE 
 if best_model_name == "Random Forest":
     importance = best_model.feature_importances_
     features = X.columns
@@ -178,7 +178,7 @@ if best_model_name == "Random Forest":
     plt.title("Feature Importance")
     plt.show()
 
-# ================== 9. PREDICTION FUNCTION ==================
+#  9. PREDICTION FUNCTION 
 def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type):
     try:
         sub_type_encoded = le_type.transform([sub_type])[0]
