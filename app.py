@@ -1,184 +1,21 @@
-# ================== IMPORTS ==================
-import pandas as pd
+import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pickle
 
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import (
-    accuracy_score, classification_report,
-    confusion_matrix, roc_curve, auc
-)
-from sklearn.svm import SVC
-from sklearn.preprocessing import label_binarize
+# ================== LOAD FILES ==================
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+with open("scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
 
-# ================== 1. LOAD DATA ==================
-df = pd.read_csv("/content/drive/MyDrive/subscription_waste_dataset.csv")
+with open("le_type.pkl", "rb") as f:
+    le_type = pickle.load(f)
 
-print("\n===== DATA HEAD =====")
-print(df.head())
+with open("le_label.pkl", "rb") as f:
+    le_label = pickle.load(f)
 
-print("\n===== DATA INFO =====")
-print(df.info())
-
-# Remove unwanted columns
-df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-
-# ================== 2. EDA ==================
-sns.countplot(x='label', data=df)
-plt.title("Subscription Decision Distribution")
-plt.show()
-
-sns.scatterplot(x='monthly_cost', y='usage_per_month', hue='label', data=df)
-plt.title("Cost vs Usage")
-plt.show()
-
-plt.figure(figsize=(8,6))
-sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm')
-plt.title("Correlation Heatmap")
-plt.show()
-
-
-
-
-# ================== 3. PREPROCESSING ==================
-le_type = LabelEncoder()
-df['subscription_type'] = le_type.fit_transform(df['subscription_type'])
-
-le_label = LabelEncoder()
-df['label'] = le_label.fit_transform(df['label'])
-
-X = df.drop('label', axis=1)
-y = df['label']
-
-# Scaling (important for LR)
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-print("\n===== PREPROCESSED DATA SHAPE =====")
-print(X_scaled.shape)
-
-# Split
-X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.25, random_state=42,stratify=y
-)
-
-# ================== 4. TRAIN MULTIPLE MODELS ==================
-models = {
-    "Logistic Regression": LogisticRegression(max_iter=2000),
-
-    "Decision Tree": DecisionTreeClassifier(
-        max_depth=8,
-        min_samples_split=5
-    ),
-
-    "Random Forest": RandomForestClassifier(
-        n_estimators=300,
-        max_depth=10,class_weight='balanced'
-    ),
-
-    "SVM": SVC(
-        C=1,
-        kernel='rbf',
-        probability=True
-    )
-}
-
-
-
-results = {}
-model_predictions = {}
-
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    results[name] = acc
-    model_predictions[name] = y_pred
-
-    print(f"\n===== {name} =====")
-    print("Accuracy:", acc)
-    print(classification_report(y_test, y_pred))
-
-# ================== 5. MODEL COMPARISON TABLE ==================
-comparison_df = pd.DataFrame({
-    "Model": results.keys(),
-    "Accuracy": results.values()
-})
-
-print("\n===== MODEL COMPARISON TABLE =====")
-print(comparison_df)
-
-plt.figure()
-sns.barplot(x="Model", y="Accuracy", data=comparison_df)
-plt.title("Model Accuracy Comparison")
-plt.xticks(rotation=30)
-plt.show()
-
-# ================== 6. CONFUSION MATRIX ==================
-best_model_name = max(results, key=results.get)
-best_model = models[best_model_name]
-
-y_pred_best = model_predictions[best_model_name]
-
-cm = confusion_matrix(y_test, y_pred_best)
-
-plt.figure(figsize=(6,5))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-plt.title(f"Confusion Matrix - {best_model_name}")
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-plt.show()
-
-# ================== 7. ROC CURVE ==================
-# Convert labels to binary format
-y_test_bin = label_binarize(y_test, classes=[0,1,2])
-
-# Use probabilities
-y_score = best_model.predict_proba(X_test)
-
-fpr = dict()
-tpr = dict()
-roc_auc = dict()
-
-for i in range(3):
-    fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
-    roc_auc[i] = auc(fpr[i], tpr[i])
-
-# Plot ROC
-plt.figure()
-for i in range(3):
-    plt.plot(fpr[i], tpr[i], label=f"Class {i} (AUC = {roc_auc[i]:.2f})")
-
-plt.plot([0,1], [0,1], 'k--')
-plt.title("ROC Curve (Multiclass)")
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.legend()
-plt.show()
-
-# ================== 8. BEST MODEL SELECTION ==================
-print("\n===== BEST MODEL =====")
-print("Best Model:", best_model_name)
-print("Accuracy:", results[best_model_name])
-
-# ================== FEATURE IMPORTANCE ==================
-if best_model_name == "Random Forest":
-    importance = best_model.feature_importances_
-    features = X.columns
-
-    plt.figure(figsize=(8,5))
-    sns.barplot(x=importance, y=features)
-    plt.title("Feature Importance")
-    plt.show()
-
-# ================== 9. PREDICTION FUNCTION ==================
+# ================== PREDICTION FUNCTION ==================
 def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type):
     try:
         sub_type_encoded = le_type.transform([sub_type])[0]
@@ -189,27 +26,35 @@ def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
 
         input_scaled = scaler.transform(input_data)
 
-        prediction = best_model.predict(input_scaled)
+        prediction = model.predict(input_scaled)
+        result = le_label.inverse_transform(prediction)[0]
 
-        return le_label.inverse_transform(prediction)[0]
+        return result
 
     except Exception as e:
         return str(e)
-# 10. STREAMLIT
-import streamlit as st
+
+# ================== UI ==================
+st.set_page_config(page_title="Subscription Waste Detector")
 
 st.title("💳 Subscription Waste Detector")
+st.write("Predict whether to Keep, Review, or Cancel a subscription")
 
-cost = st.number_input("Monthly Cost")
-usage = st.number_input("Usage per Month")
-session = st.number_input("Avg Session Time")
-last_use = st.number_input("Days Since Last Use")
+cost = st.number_input("Monthly Cost", min_value=0.0)
+usage = st.number_input("Usage per Month", min_value=0.0)
+session = st.number_input("Avg Session Time", min_value=0.0)
+last_use = st.number_input("Days Since Last Use", min_value=0.0)
 auto = st.radio("Auto Renew", [0,1])
 rating = st.slider("Value Rating", 1, 5)
 sub_type = st.selectbox("Subscription Type", ["OTT","Gym","Software","Music","News"])
 
 if st.button("Predict"):
-    result = predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
-    st.success(f"Prediction: {result}")
+    with st.spinner("Analyzing..."):
+        result = predict_subscription(cost, usage, session, last_use, auto, rating, sub_type)
 
-interface.launch()
+    if result == "Keep":
+        st.success(f"✅ Recommendation: {result}")
+    elif result == "Review":
+        st.warning(f"⚠️ Recommendation: {result}")
+    else:
+        st.error(f"❌ Recommendation: {result}")
