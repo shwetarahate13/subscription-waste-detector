@@ -11,3 +11,6 @@ This ML app predicts whether to keep, review, or cancel a subscription.
 - Interactive UI
 - Real-time prediction
 - ML-powered insights
+
+  ## APP LINK
+  -https://subscription-waste-detector-adopuk2yxms7z35zddza2s.streamlit.app/
