@@ -1,4 +1,4 @@
-# IMPORTS 
+#  IMPORTS
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,19 +17,31 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 
-# 1. LOAD DATA 
+# 1. LOAD DATA
 df = pd.read_csv("/content/drive/MyDrive/subscription_waste_dataset.csv")
 
-print("\n===== DATA HEAD =====")
+print("\nDATA HEAD")
 print(df.head())
 
-print("\n===== DATA INFO =====")
+print("\nDATA INFO ")
 print(df.info())
+
+# OUTLIER REMOVAL (IQR)
+for col in df.select_dtypes(include=np.number).columns:
+    Q1 = df[col].quantile(0.25)
+    Q3 = df[col].quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+
+    df = df[(df[col] >= lower) & (df[col] <= upper)]
+
 
 # Remove unwanted columns
 df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
-# ================== 2. EDA ==================
+#  2. EDA
 sns.countplot(x='label', data=df)
 plt.title("Subscription Decision Distribution")
 plt.show()
@@ -44,9 +56,7 @@ plt.title("Correlation Heatmap")
 plt.show()
 
 
-
-
-# 3. PREPROCESSING
+#  3. PREPROCESSING
 le_type = LabelEncoder()
 df['subscription_type'] = le_type.fit_transform(df['subscription_type'])
 
@@ -56,11 +66,11 @@ df['label'] = le_label.fit_transform(df['label'])
 X = df.drop('label', axis=1)
 y = df['label']
 
-# Scaling (important for LR)
+# Scaling
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-print("\n===== PREPROCESSED DATA SHAPE =====")
+print("DATA SHAPE")
 print(X_scaled.shape)
 
 # Split
@@ -68,9 +78,10 @@ X_train, X_test, y_train, y_test = train_test_split(
     X_scaled, y, test_size=0.25, random_state=42,stratify=y
 )
 
-# 4. TRAIN MULTIPLE MODELS 
+#  4. TRAIN MULTIPLE MODELS
 models = {
     "Logistic Regression": LogisticRegression(max_iter=2000),
+
 
     "Decision Tree": DecisionTreeClassifier(
         max_depth=8,
@@ -102,17 +113,20 @@ for name, model in models.items():
     results[name] = acc
     model_predictions[name] = y_pred
 
-    print(f"\n===== {name} =====")
+    print(f"\n {name} ")
     print("Accuracy:", acc)
     print(classification_report(y_test, y_pred))
 
-#  5. MODEL COMPARISON TABLE 
+
+    
+
+#  5. MODEL COMPARISON TABLE
 comparison_df = pd.DataFrame({
     "Model": results.keys(),
     "Accuracy": results.values()
 })
 
-print("\n===== MODEL COMPARISON TABLE =====")
+print("\nMODEL COMPARISON TABLE")
 print(comparison_df)
 
 plt.figure()
@@ -121,7 +135,7 @@ plt.title("Model Accuracy Comparison")
 plt.xticks(rotation=30)
 plt.show()
 
-#  6. CONFUSION MATRIX
+#6. CONFUSION MATRIX
 best_model_name = max(results, key=results.get)
 best_model = models[best_model_name]
 
@@ -136,8 +150,8 @@ plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.show()
 
-#  7. ROC CURVE 
-# Convert labels to binary format
+#  7. ROC CURVE
+
 y_test_bin = label_binarize(y_test, classes=[0,1,2])
 
 # Use probabilities
@@ -153,45 +167,70 @@ for i in range(3):
 
 # Plot ROC
 plt.figure()
-for i in range(3):
-    plt.plot(fpr[i], tpr[i], label=f"Class {i} (AUC = {roc_auc[i]:.2f})")
+
+y_test_bin = label_binarize(y_test, classes=np.unique(y))
+
+for name, model in models.items():
+    y_score = model.predict_proba(X_test)
+
+    fpr, tpr, _ = roc_curve(y_test_bin.ravel(), y_score.ravel())
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc:.2f})")
 
 plt.plot([0,1], [0,1], 'k--')
-plt.title("ROC Curve (Multiclass)")
+plt.title("ROC Curve - All Models")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
 plt.legend()
 plt.show()
 
-#  8. BEST MODEL SELECTION 
-print("\n===== BEST MODEL =====")
+
+# 8. BEST MODEL SELECTION
+print("\nBEST MODEL")
 print("Best Model:", best_model_name)
 print("Accuracy:", results[best_model_name])
 
-#  FEATURE IMPORTANCE 
-if best_model_name == "Random Forest":
-    importance = best_model.feature_importances_
-    features = X.columns
 
-    plt.figure(figsize=(8,5))
-    sns.barplot(x=importance, y=features)
-    plt.title("Feature Importance")
-    plt.show()
 
-#  9. PREDICTION FUNCTION 
+# ================== 9. SAVE MODEL ==================
+
+import pickle
+
+with open("model.pkl", "wb") as f:
+    pickle.dump(best_model, f)
+
+with open("scaler.pkl", "wb") as f:
+    pickle.dump(scaler, f)
+
+with open("label_encoder.pkl", "wb") as f:
+    pickle.dump(le_label, f)
+
+with open("type_encoder.pkl", "wb") as f:
+    pickle.dump(le_type, f)
+
+# ================== 10. LOAD MODEL ==================
+with open("model.pkl", "rb") as f:
+    loaded_model = pickle.load(f)
+
+
+
+#  9. PREDICTION FUNCTION
 def predict_subscription(cost, usage, session, last_use, auto, rating, sub_type):
-    try:
-        sub_type_encoded = le_type.transform([sub_type])[0]
 
-        input_data = np.array([[cost, usage, session,
-                                last_use, auto, rating,
-                                sub_type_encoded]])
+    # VALIDATION (if-else instead of try-except)
+    if sub_type not in le_type.classes_:
+        return "Invalid subscription type"
 
-        input_scaled = scaler.transform(input_data)
+    sub_type_encoded = le_type.transform([sub_type])[0]
 
-        prediction = best_model.predict(input_scaled)
+    input_data = np.array([[cost, usage, session, last_use, auto, rating, sub_type_encoded]])
 
+    input_scaled = scaler.transform(input_data)
+
+    prediction = loaded_model.predict(input_scaled)
+
+    if prediction is not None:
         return le_label.inverse_transform(prediction)[0]
-
-    except Exception as e:
-        return str(e)
+    else:
+        return "Prediction failed"
